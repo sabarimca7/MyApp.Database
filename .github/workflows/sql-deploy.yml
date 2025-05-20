@@ -25,7 +25,7 @@ jobs:
 
     - name: Build SQL Database Project
       run: |
-        msbuild YourSolutionName.sln /p:Configuration=Release
+        msbuild MyApp.Database.sln /p:Configuration=Release
 
     - name: Deploy DACPAC to SQL Server
       env:
