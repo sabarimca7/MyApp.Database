@@ -1,0 +1,43 @@
+name: Build and Deploy SQL DB
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up MSBuild
+      uses: microsoft/setup-msbuild@v1.3.1
+
+    - name: Build SQL Database Project
+      run: |
+        msbuild MyApp.Database.sln /p:Configuration=Release
+
+    - name: Deploy DACPAC to SQL Server
+      env:
+        SQL_SERVER: ${{ secrets.SQL_SERVER }}
+        SQL_DATABASE: ${{ secrets.SQL_DATABASE }}
+        SQL_USERNAME: ${{ secrets.SQL_USERNAME }}
+        SQL_PASSWORD: ${{ secrets.SQL_PASSWORD }}
+      run: |
+        # Find DACPAC file
+        $dacpac = Get-ChildItem -Path . -Recurse -Filter *.dacpac | Select-Object -First 1
+        if (!$dacpac) { throw "DACPAC file not found" }
+
+        # Run sqlpackage to deploy
+        sqlpackage /Action:Publish `
+          /SourceFile:"$($dacpac.FullName)" `
+          /TargetServerName:$env:SQL_SERVER `
+          /TargetDatabaseName:$env:SQL_DATABASE `
+          /TargetUser:$env:SQL_USERNAME `
+          /TargetPassword:$env:SQL_PASSWORD `
+          /p:DropObjectsNotInSource=true `
+          /p:AllowIncompatiblePlatform=true `
+          /Quiet
